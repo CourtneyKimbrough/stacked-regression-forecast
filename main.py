@@ -91,7 +91,7 @@ health_target_scaled = scaler_health_target.fit_transform(health_risk_vals.resha
 best_weight_air, best_eval_air = sim_ann(air_data_scaled, air_target_scaled, air_qual_bounds)
 best_weight_health, best_eval_health = sim_ann(health_risk_data_scaled, health_target_scaled, health_risk_bounds)
 
-
+# Print evaluation metrics
 print("Air Quality Feature Weights:")
 for feature, weight in zip(air_qual_feat, best_weight_air):
     print(f"{feature}: {weight:.3f}")
