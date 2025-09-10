@@ -30,7 +30,7 @@ def neighbor(current_solution, step_size=0.1):
 def predict(weights, data):
     return np.dot(data, weights)
 
-def sim_ann(data, target_vals, bounds, n_iterations=1000, step_size=0.1, temp=10):
+def sim_ann(data, target_vals, bounds, n_iterations=800, step_size=0.1, temp=10):
     # Assign random starting weights
     current_solution = [random.uniform(bound[0], bound[1]) for bound in bounds]
     current_eval = mse(target_vals, predict(current_solution, data))
@@ -55,6 +55,22 @@ def sim_ann(data, target_vals, bounds, n_iterations=1000, step_size=0.1, temp=10
         temp *= .99
 
     return best_solution, best_eval
+
+def gradient_descent(data, target_vals, weights, lr=0.01, n_iter=100):
+    for _ in range(n_iter):
+        pred = predict(weights, data)
+        error = pred - target_vals
+        # Calculate the gradient for each weight:
+        # 1. Transpose the data so that each feature is aligned for summing across all samples.
+        # 2. Multiply the transposed data by the prediction errors to see how each feature contributes to the error.
+        # 3. Divide by the number of samples to get the average contribution.
+        # 4. Multiply by 2 because the derivative of the squared error includes a factor of 2.
+        gradient = 2 * np.dot(data.T, error) / len(target_vals)
+        weights = weights - lr * gradient
+    return weights, mse(target_vals, predict(weights, data))
+
+
+
 
 # Select which rows from the data table will be used
 air_qual_feat = ["pm2.5", "no2", "co2"]
@@ -88,6 +104,7 @@ scaler_health_target = StandardScaler()
 air_target_scaled = scaler_air_target.fit_transform(air_target_vals.reshape(-1, 1)).flatten()
 health_target_scaled = scaler_health_target.fit_transform(health_risk_vals.reshape(-1, 1)).flatten()
 
+# Run simulated annealling
 best_weight_air, best_eval_air = sim_ann(air_data_scaled, air_target_scaled, air_qual_bounds)
 best_weight_health, best_eval_health = sim_ann(health_risk_data_scaled, health_target_scaled, health_risk_bounds)
 
@@ -98,6 +115,22 @@ for feature, weight in zip(air_qual_feat, best_weight_air):
 print(f"Evaluation: \033[92m{best_eval_air:.5f}\033[0m\n")
 
 print("Health Risk Feature Weights:")
+for feature, weight in zip(health_risk_feat, best_weight_health):
+    print(f"{feature}: {weight:.3f}")
+print(f"Evaluation: \033[92m{best_eval_health:.5f}\033[0m")
+
+# Run gradient descent
+best_weight_air, best_eval_air = gradient_descent(air_data_scaled, air_target_scaled, np.array(best_weight_air))
+best_weight_health, best_eval_health = gradient_descent(health_risk_data_scaled, health_target_scaled, np.array(best_weight_health))
+
+# Print evaluation metrics for Air Quality
+print("Air Quality Feature Weights After Gradient Descent:")
+for feature, weight in zip(air_qual_feat, best_weight_air):
+    print(f"{feature}: {weight:.3f}")
+print(f"Evaluation: \033[92m{best_eval_air:.5f}\033[0m\n")
+
+# Print evaluation metrics for Health Risk
+print("Health Risk Feature Weights After Gradient Descent:")
 for feature, weight in zip(health_risk_feat, best_weight_health):
     print(f"{feature}: {weight:.3f}")
 print(f"Evaluation: \033[92m{best_eval_health:.5f}\033[0m")
