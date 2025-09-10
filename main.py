@@ -3,7 +3,9 @@ import random
 import math
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import Lasso
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
 
 
 df = pd.read_csv("data.csv")
@@ -80,9 +82,6 @@ def gradient_descent(data, target_vals, weights, lr=0.01, n_iter=100, alpha_l1=0
 
     return weights, mse(target_vals, predict(weights, data))
 
-
-
-
 # Select which rows from the data table will be used
 air_qual_feat = ["pm2.5", "no2", "co2"]
 health_risk_feat = ["airQuality", "tempmax", "tempmin", "temp", "dew", "humidity", "precip", "precipprob", 
@@ -119,31 +118,38 @@ health_target_scaled = scaler_health_target.fit_transform(health_risk_vals.resha
 best_weight_air, best_eval_air = sim_ann(air_data_scaled, air_target_scaled, air_qual_bounds)
 best_weight_health, best_eval_health = sim_ann(health_risk_data_scaled, health_target_scaled, health_risk_bounds)
 
-# Print evaluation metrics
-print("Air Quality Feature Weights:")
-for feature, weight in zip(air_qual_feat, best_weight_air):
-    print(f"{feature}: {weight:.3f}")
-print(f"Evaluation: \033[92m{best_eval_air:.5f}\033[0m\n")
-
-print("Health Risk Feature Weights:")
-for feature, weight in zip(health_risk_feat, best_weight_health):
-    print(f"{feature}: {weight:.3f}")
-print(f"Evaluation: \033[92m{best_eval_health:.5f}\033[0m")
-
 # Run gradient descent
 best_weight_air, best_eval_air = gradient_descent(air_data_scaled, air_target_scaled, np.array(best_weight_air))
 best_weight_health, best_eval_health = gradient_descent(health_risk_data_scaled, health_target_scaled, np.array(best_weight_health))
 
-# Print evaluation metrics for Air Quality
-print("Air Quality Feature Weights After Gradient Descent:")
-for feature, weight in zip(air_qual_feat, best_weight_air):
-    print(f"{feature}: {weight:.3f}")
-print(f"Evaluation: \033[92m{best_eval_air:.5f}\033[0m\n")
+# Implement random forest
+rf_air = RandomForestRegressor(n_estimators=100, random_state=42)
+rf_air.fit(air_data_scaled, air_target_scaled)
+rf_pred_air = rf_air.predict(air_data_scaled).reshape(-1, 1)
 
-# Print evaluation metrics for Health Risk
-print("Health Risk Feature Weights After Gradient Descent:")
-for feature, weight in zip(health_risk_feat, best_weight_health):
-    print(f"{feature}: {weight:.3f}")
-print(f"Evaluation: \033[92m{best_eval_health:.5f}\033[0m")
+rf_health = RandomForestRegressor(n_estimators=100, random_state=42)
+rf_health.fit(health_risk_data_scaled, health_target_scaled)
+rf_pred_health = rf_health.predict(health_risk_data_scaled).reshape(-1, 1)
 
+# Combine linear + RF predictions as features
+linear_pred_air = predict(best_weight_air, air_data_scaled).reshape(-1, 1)
+linear_pred_health = predict(best_weight_health, health_risk_data_scaled).reshape(-1, 1)
 
+stack_air = np.hstack([linear_pred_air, rf_pred_air])
+stack_health = np.hstack([linear_pred_health, rf_pred_health])
+
+# Meta-model
+meta_air = LinearRegression()
+meta_air.fit(stack_air, air_target_scaled)
+stacked_air_pred = meta_air.predict(stack_air)
+
+meta_health = LinearRegression()
+meta_health.fit(stack_health, health_target_scaled)
+stacked_health_pred = meta_health.predict(stack_health)
+
+#Final Evaluation 
+final_mse_air = mse(air_target_scaled, stacked_air_pred)
+final_mse_health = mse(health_target_scaled, stacked_health_pred)
+
+print(f"Stacked Air Quality Evaluation (MSE): {final_mse_air:.5f}")
+print(f"Stacked Health Risk Evaluation (MSE): {final_mse_health:.5f}")
