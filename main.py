@@ -3,6 +3,7 @@ import random
 import math
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import Lasso
 
 
 df = pd.read_csv("data.csv")
@@ -56,17 +57,27 @@ def sim_ann(data, target_vals, bounds, n_iterations=800, step_size=0.1, temp=10)
 
     return best_solution, best_eval
 
-def gradient_descent(data, target_vals, weights, lr=0.01, n_iter=100):
+def gradient_descent(data, target_vals, weights, lr=0.01, n_iter=100, alpha_l1=0.1, alpha_l2=0.1):
     for _ in range(n_iter):
         pred = predict(weights, data)
         error = pred - target_vals
+
         # Calculate the gradient for each weight:
         # 1. Transpose the data so that each feature is aligned for summing across all samples.
         # 2. Multiply the transposed data by the prediction errors to see how each feature contributes to the error.
         # 3. Divide by the number of samples to get the average contribution.
         # 4. Multiply by 2 because the derivative of the squared error includes a factor of 2.
         gradient = 2 * np.dot(data.T, error) / len(target_vals)
+        
+        # Add L1 penalty for Lasso
+        gradient += alpha_l1 * np.sign(weights)
+
+        # Add L2 penalty for Ridge
+        gradient += 2 * alpha_l2 * weights 
+
+        # Update weights
         weights = weights - lr * gradient
+
     return weights, mse(target_vals, predict(weights, data))
 
 
@@ -134,3 +145,5 @@ print("Health Risk Feature Weights After Gradient Descent:")
 for feature, weight in zip(health_risk_feat, best_weight_health):
     print(f"{feature}: {weight:.3f}")
 print(f"Evaluation: \033[92m{best_eval_health:.5f}\033[0m")
+
+
