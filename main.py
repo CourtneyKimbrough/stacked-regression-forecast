@@ -70,15 +70,15 @@ def gradient_descent(data, target_vals, weights, lr=0.01, n_iter=100, alpha_l1=0
         # 3. Divide by the number of samples to get the average contribution.
         # 4. Multiply by 2 because the derivative of the squared error includes a factor of 2.
         gradient = 2 * np.dot(data.T, error) / len(target_vals)
-        
-        # Add L1 penalty for Lasso
-        gradient += alpha_l1 * np.sign(weights)
-
+    
         # Add L2 penalty for Ridge
-        gradient += 2 * alpha_l2 * weights 
+        gradient += 2 * alpha_l2 * weights
 
         # Update weights
         weights = weights - lr * gradient
+
+        # Add L1 penalty for Lasso
+        weights = np.sign(weights) * np.maximum(np.abs(weights) - lr * alpha_l1, 0.0)
 
     return weights, mse(target_vals, predict(weights, data))
 
@@ -147,9 +147,18 @@ meta_health = LinearRegression()
 meta_health.fit(stack_health, health_target_scaled)
 stacked_health_pred = meta_health.predict(stack_health)
 
+# Function to calculate r2
+def r2_score(y_true, y_pred):
+    ss_res = np.sum((y_true - y_pred) ** 2)
+    ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
+    return 1 - (ss_res / ss_tot)
+
 # Final Evaluation 
 final_mse_air = mse(air_target_scaled, stacked_air_pred)
 final_mse_health = mse(health_target_scaled, stacked_health_pred)
 
-print(f"Stacked Air Quality Evaluation (MSE): {final_mse_air:.5f}")
-print(f"Stacked Health Risk Evaluation (MSE): {final_mse_health:.5f}")
+final_r2_air = r2_score(air_target_scaled, stacked_air_pred)
+final_r2_health = r2_score(health_target_scaled, stacked_health_pred)
+
+print(f"Air Quality - MSE: {final_mse_air:.5f}, R²: {final_r2_air:.5f}")
+print(f"Health Risk - MSE: {final_mse_health:.5f}, R²: {final_r2_health:.5f}")
