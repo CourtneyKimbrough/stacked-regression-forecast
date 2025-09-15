@@ -12,5 +12,6 @@ This project demonstrates an AI solution that predicts **air quality** and **hea
 
 ## Dataset
 
-The model uses a dataset containing environmental factors (e.g., `pm2.5`, `no2`, `co2`, temperature, humidity, wind gust) and target variables (`airQuality`, `healthRiskScore`).  
+The model uses a dataset containing environmental factors (e.g., `pm2.5`, `no2`, `co2`, `temperature`, `humidity`, `wind gust`) and target variables (`airQuality`, `healthRiskScore`).  
+
 
